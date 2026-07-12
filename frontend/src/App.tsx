@@ -46,6 +46,12 @@ import { EmptyOrders, OrbitalMap, StatusBadge } from "./components";
 import { AuthScreen, ProfileModal } from "./AuthViews";
 import { NotificationCenter } from "./NotificationCenter";
 import type { CapturedFrame } from "./SatelliteMissionMap";
+import {
+  frameFromBlob,
+  hasCapturedFrame,
+  loadCapturedFrame,
+  saveCapturedFrame,
+} from "./frameStorage";
 
 const SatelliteMissionMap = lazy(() =>
   import("./SatelliteMissionMap").then((module) => ({
@@ -206,14 +212,12 @@ function Dashboard({
   };
 
   const openOrderProduct = async (order: Order) => {
-    const stored = localStorage.getItem(
-      `orbitamarket-frame-v2-${order.order_id}`,
-    );
-    if (order.status === "PAID" && stored) {
-      setPreviewFrame(JSON.parse(stored) as CapturedFrame);
-      return;
-    }
     if (order.status === "PAID") {
+      const stored = await loadCapturedFrame(order.order_id).catch(() => null);
+      if (stored) {
+        setPreviewFrame(stored);
+        return;
+      }
       const request = requestFromWkt(order.payload.aoi);
       if (!request) {
         notify("В заказе отсутствует корректный AOI");
@@ -227,24 +231,18 @@ function Dashboard({
           request.bbox,
           request.ring,
         );
-        const image = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(productBlob);
-        });
         const [west, south, east, north] = request.bbox;
-        const frame: CapturedFrame = {
-          image,
+        const metadata: Omit<CapturedFrame, "image"> = {
           captured_at: new Date().toISOString(),
           center: [(west + east) / 2, (south + north) / 2],
           zoom: 15,
           source: "Esri World Imagery / Rust Fulfillment",
         };
-        localStorage.setItem(
-          `orbitamarket-frame-v2-${order.order_id}`,
-          JSON.stringify(frame),
-        );
+        const frame = await saveCapturedFrame(
+          order.order_id,
+          productBlob,
+          metadata,
+        ).catch(() => frameFromBlob(productBlob, metadata));
         setPreviewFrame(frame);
         return;
       } catch (error) {
@@ -296,9 +294,8 @@ function Dashboard({
   useEffect(() => {
     const prepareProducts = async () => {
       for (const order of orders.filter((value) => value.status === "PAID")) {
-        const frameKey = `orbitamarket-frame-v2-${order.order_id}`;
         const requestKey = `orbitamarket-capture-v2-${order.order_id}`;
-        if (localStorage.getItem(frameKey)) continue;
+        if (await hasCapturedFrame(order.order_id).catch(() => false)) continue;
         const stored = localStorage.getItem(requestKey);
         try {
           const request = stored
@@ -312,21 +309,14 @@ function Dashboard({
           const productBlob = request.ring
             ? await clipSnapshotToAoi(blob, request.bbox, request.ring)
             : blob;
-          const image = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(productBlob);
-          });
           const [west, south, east, north] = request.bbox;
-          const frame: CapturedFrame = {
-            image,
+          const metadata: Omit<CapturedFrame, "image"> = {
             captured_at: new Date().toISOString(),
             center: [(west + east) / 2, (south + north) / 2],
             zoom: 15,
             source: "Esri World Imagery / Rust Fulfillment",
           };
-          localStorage.setItem(frameKey, JSON.stringify(frame));
+          await saveCapturedFrame(order.order_id, productBlob, metadata);
           localStorage.removeItem(requestKey);
           notify(`Спутниковый продукт ${shortId(order.order_id)} готов`);
         } catch {
