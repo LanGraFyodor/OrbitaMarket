@@ -1,0 +1,23 @@
+syntax = "proto3";
+package orbitamarket.geo.v1;
+
+service GeoPricing {
+  rpc Analyze (AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+message AnalyzeRequest {
+  string geojson = 1;
+  string product_type = 2;
+  double resolution_m = 3;
+}
+
+message AnalyzeResponse {
+  bool valid = 1;
+  string error = 2;
+  double area_sq_km = 3;
+  int64 price_geocredits = 4;
+  repeated double bbox = 5;
+  string normalized_geojson = 6;
+  string quote_id = 7;
+  double resolution_m = 8;
+}

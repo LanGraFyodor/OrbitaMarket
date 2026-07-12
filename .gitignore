@@ -1,0 +1,14 @@
+target/
+**/target/
+.idea/
+*.iml
+.env
+*.log
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.tsbuildinfo
+.agents/
+.codex/
+README2.md

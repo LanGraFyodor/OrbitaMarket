@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orbita
+      POSTGRES_PASSWORD: orbita
+      POSTGRES_DB: orbita
+    ports: ["5433:5432"]
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=8MB
+    volumes:
+      - ./docker/init-schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbita"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["6379:6379"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  kafka:
+    image: apache/kafka:3.9.0
+    ports: ["9092:9094"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  payments-service:
+    build: { context: ., dockerfile: payments-service/Dockerfile }
+    environment: { SPRING_PROFILES_ACTIVE: docker }
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_started }
+      redis: { condition: service_healthy }
+  orders-service:
+    build: { context: ., dockerfile: orders-service/Dockerfile }
+    environment: { SPRING_PROFILES_ACTIVE: docker }
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_started }
+      redis: { condition: service_healthy }
+  auth-service:
+    build: { context: ., dockerfile: auth-service/Dockerfile }
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET:-orbitamarket-development-secret-key-change-in-production}
+    depends_on: { postgres: { condition: service_healthy } }
+  notifications-service:
+    build: { context: ., dockerfile: notifications-service/Dockerfile }
+    environment: { SPRING_PROFILES_ACTIVE: docker }
+    depends_on: { postgres: { condition: service_healthy }, kafka: { condition: service_started } }
+  geo-pricing-service:
+    build: { context: ., dockerfile: geo-pricing-service/Dockerfile }
+    environment: { RUST_LOG: info }
+  api-gateway:
+    build: { context: ., dockerfile: api-gateway/Dockerfile }
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET:-orbitamarket-development-secret-key-change-in-production}
+    ports: ["8080:8080"]
+    depends_on: [payments-service, orders-service, auth-service, notifications-service, geo-pricing-service]
+  frontend:
+    build: { context: ., dockerfile: frontend/Dockerfile }
+    ports: ["3000:80"]
+    depends_on: [api-gateway]
+
+volumes:
+  postgres_data:
+  redis_data:

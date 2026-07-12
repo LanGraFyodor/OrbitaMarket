@@ -1,0 +1,19 @@
+server: { port: 8083 }
+spring:
+  application: { name: auth-service }
+  datasource: { url: "jdbc:postgresql://127.0.0.1:5433/orbita?currentSchema=auth", username: orbita, password: orbita }
+  jpa:
+    hibernate: { ddl-auto: validate }
+    properties: { hibernate: { default_schema: auth } }
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.sql
+    default-schema: auth
+auth:
+  jwt:
+    secret: ${JWT_SECRET:orbitamarket-development-secret-key-change-in-production}
+    ttl: 8h
+---
+spring:
+  config: { activate: { on-profile: docker } }
+  datasource: { url: "jdbc:postgresql://postgres:5432/orbita?currentSchema=auth" }

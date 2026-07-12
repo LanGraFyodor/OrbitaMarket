@@ -1,0 +1,39 @@
+@startuml
+!include <C4/C4_Container>
+title C2 — Containers OrbitaMarket
+
+Person(user, "Клиент", "Browser / Postman / autotests")
+System_Ext(imagery, "OSM / Esri World Imagery", "Tiles и спутниковый export")
+
+System_Boundary(system, "OrbitaMarket") {
+  Container(frontend, "Web Console", "React, TypeScript, Leaflet", "JWT UI, карта AOI, заказы и продукты")
+  Container(gateway, "API Gateway", "Spring Cloud Gateway", "HTTP routing и доверенный X-User-Id")
+  Container(auth, "Auth Service", "Spring Boot", "BCrypt, JWT, профиль")
+  Container(orders, "Orders Service", "Spring Boot", "Заказы, lifecycle, outbox/inbox")
+  Container(payments, "Payments Service", "Spring Boot", "Счета и exactly-once списание")
+  Container(notifications, "Notifications Service", "Spring Boot + SSE", "История и live уведомления")
+  Container(geo, "Geo Pricing Service", "Rust, Axum, tonic", "GeoJSON, площадь, цена, tiles, PNG")
+  ContainerDb(db, "Service schemas", "PostgreSQL", "auth/orders/payments/notifications")
+  ContainerDb(redis, "Redis Cache", "Redis 7.4", "Баланс и read-модели заказов")
+  ContainerQueue(kafka, "Kafka", "Kafka", "orders.payment-requests / payments.results")
+}
+
+Rel(user, frontend, "Работает", "HTTPS")
+Rel(user, gateway, "REST autotests", "HTTP + X-User-Id")
+Rel(frontend, gateway, "REST/SSE", "HTTP + JWT")
+Rel(gateway, auth, "HTTP")
+Rel(gateway, orders, "HTTP")
+Rel(gateway, payments, "HTTP")
+Rel(gateway, notifications, "HTTP/SSE")
+Rel(gateway, geo, "HTTP")
+Rel(auth, db, "JPA, schema auth")
+Rel(orders, db, "JPA, schema orders")
+Rel(payments, db, "JPA, schema payments")
+Rel(notifications, db, "JPA, schema notifications")
+Rel(orders, redis, "cache-aside + eviction", "RESP")
+Rel(payments, redis, "cache-aside + eviction", "RESP")
+Rel(orders, kafka, "publish request / consume result", "Kafka")
+Rel(payments, kafka, "consume request / publish result", "Kafka")
+Rel(notifications, kafka, "consume result", "Kafka")
+Rel(geo, imagery, "tile/export proxy", "HTTPS")
+@enduml

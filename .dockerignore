@@ -1,0 +1,9 @@
+**/target/
+**/node_modules/
+**/dist/
+autotests/
+*.log
+.git/
+.idea/
+.vscode/
+docs/

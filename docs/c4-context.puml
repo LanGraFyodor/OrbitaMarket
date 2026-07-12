@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+title C1 — System Context OrbitaMarket
+
+Person(operator, "Оператор ДЗЗ", "Заказывает будущую съёмку и мониторинг")
+Person(analyst, "Аналитик / заказчик", "Покупает архив и получает геопродукты")
+Person(admin, "Администратор", "Контролирует доступность, тарифы и безопасность")
+
+System(orbita, "OrbitaMarket", "Заказы спутниковых продуктов и биллинг в геокредитах")
+System_Ext(imagery, "World Imagery / OSM", "Картографические и спутниковые данные")
+
+Rel(operator, orbita, "Создаёт миссии", "HTTPS/JWT")
+Rel(analyst, orbita, "Выбирает AOI, оплачивает и получает PNG", "HTTPS/JWT")
+Rel(admin, orbita, "Эксплуатирует", "HTTPS")
+Rel(orbita, imagery, "Получает tiles и imagery export", "HTTPS")
+@enduml

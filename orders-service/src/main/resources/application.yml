@@ -1,0 +1,24 @@
+server: { port: 8082 }
+spring:
+  application: { name: orders-service }
+  datasource: { url: "jdbc:postgresql://127.0.0.1:5433/orbita?currentSchema=orders", username: orbita, password: orbita }
+  jpa:
+    hibernate: { ddl-auto: validate }
+    properties: { hibernate: { default_schema: orders } }
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.sql
+    default-schema: orders
+  cache: { type: redis }
+  data:
+    redis: { host: localhost, port: 6379, timeout: 2s }
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer: { auto-offset-reset: earliest }
+    producer: { value-serializer: org.apache.kafka.common.serialization.StringSerializer }
+---
+spring:
+  config: { activate: { on-profile: docker } }
+  datasource: { url: "jdbc:postgresql://postgres:5432/orbita?currentSchema=orders" }
+  kafka: { bootstrap-servers: kafka:9092 }
+  data: { redis: { host: redis, port: 6379 } }

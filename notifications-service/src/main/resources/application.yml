@@ -1,0 +1,23 @@
+server: { port: 8084 }
+spring:
+  application: { name: notifications-service }
+  datasource: { url: "jdbc:postgresql://127.0.0.1:5433/orbita?currentSchema=notifications", username: orbita, password: orbita }
+  jpa:
+    hibernate: { ddl-auto: validate }
+    properties: { hibernate: { default_schema: notifications } }
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.sql
+    default-schema: notifications
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notifications-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+---
+spring:
+  config: { activate: { on-profile: docker } }
+  datasource: { url: "jdbc:postgresql://postgres:5432/orbita?currentSchema=notifications" }
+  kafka: { bootstrap-servers: kafka:9092 }

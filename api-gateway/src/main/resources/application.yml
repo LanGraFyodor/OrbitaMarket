@@ -1,0 +1,54 @@
+server: { port: 8080 }
+spring:
+  application: { name: api-gateway }
+  cloud:
+    gateway:
+      routes:
+        - id: payments
+          uri: ${PAYMENTS_URL:http://localhost:8081}
+          predicates: [ Path=/payments/** ]
+          filters: [ StripPrefix=1 ]
+        - id: orders
+          uri: ${ORDERS_URL:http://localhost:8082}
+          predicates: [ Path=/orders/** ]
+          filters: [ StripPrefix=1 ]
+        - id: auth
+          uri: ${AUTH_URL:http://localhost:8083}
+          predicates: [ Path=/auth/** ]
+          filters: [ StripPrefix=1 ]
+        - id: notifications
+          uri: ${NOTIFICATIONS_URL:http://localhost:8084}
+          predicates: [ Path=/notifications/** ]
+          filters: [ StripPrefix=1 ]
+        - id: geo-pricing
+          uri: ${GEO_PRICING_URL:http://localhost:8090}
+          predicates: [ Path=/geo/** ]
+          filters: [ StripPrefix=1 ]
+management: { endpoints: { web: { exposure: { include: health,info } } } }
+auth.jwt.secret: ${JWT_SECRET:orbitamarket-development-secret-key-change-in-production}
+---
+spring:
+  config: { activate: { on-profile: docker } }
+  cloud:
+    gateway:
+      routes:
+        - id: payments
+          uri: http://payments-service:8081
+          predicates: [ Path=/payments/** ]
+          filters: [ StripPrefix=1 ]
+        - id: orders
+          uri: http://orders-service:8082
+          predicates: [ Path=/orders/** ]
+          filters: [ StripPrefix=1 ]
+        - id: auth
+          uri: http://auth-service:8083
+          predicates: [ Path=/auth/** ]
+          filters: [ StripPrefix=1 ]
+        - id: notifications
+          uri: http://notifications-service:8084
+          predicates: [ Path=/notifications/** ]
+          filters: [ StripPrefix=1 ]
+        - id: geo-pricing
+          uri: http://geo-pricing-service:8090
+          predicates: [ Path=/geo/** ]
+          filters: [ StripPrefix=1 ]

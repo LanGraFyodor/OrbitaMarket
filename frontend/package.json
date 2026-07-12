@@ -1,0 +1,30 @@
+{
+  "name": "orbitamarket-console",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" package.json",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" package.json",
+    "preview": "vite preview",
+    "test:map": "node tests/map-aoi.e2e.mjs"
+  },
+  "dependencies": {
+    "@types/leaflet": "^1.9.21",
+    "@vitejs/plugin-react": "latest",
+    "leaflet": "^1.9.4",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "playwright-core": "^1.61.1",
+    "prettier": "^3.9.5",
+    "typescript": "latest"
+  }
+}
