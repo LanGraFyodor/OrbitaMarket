@@ -4,7 +4,7 @@
 
 | Проверка | Результат |
 |---|---|
-| `mvn clean test` | 12 tests, 0 failures/errors |
+| `mvn clean test` | 13 tests, 0 failures/errors |
 | `mvn spotless:check` | BUILD SUCCESS |
 | Rust `fmt/clippy/test` | 2 tests, warnings denied, PASS |
 | frontend `npm ci` | 0 vulnerabilities |

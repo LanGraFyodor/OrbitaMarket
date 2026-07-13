@@ -2,7 +2,7 @@
 
 Независимый Maven-проект системных тестов. Он не импортирует внутренние классы микросервисов и обращается к системе только через публичный Gateway и Kafka.
 
-Для выполнения требования курса каталог `autotests` следует опубликовать отдельным публичным Git-репозиторием. В отдельном репозитории сохраните этот README и `pom.xml/src` без копирования исходников сервисов.
+Это автономный проект: при публикации в отдельный публичный Git-репозиторий в него переносятся только этот README, `pom.xml` и `src/`, без исходников микросервисов.
 
 ## Запуск
 
@@ -12,24 +12,28 @@
 docker compose up --build -d
 ```
 
-Затем:
+Затем, из отдельного clone этого репозитория:
 
 ```bash
-mvn -f autotests/pom.xml clean test
+mvn clean test
 ```
 
-Параметры:
+Если тесты запускаются из исходного монорепозитория OrbitaMarket, используйте эквивалентную команду `mvn -f autotests/pom.xml clean test`.
+
+Параметры отдельного clone:
 
 ```bash
-mvn -f autotests/pom.xml test \
+mvn test \
   -Dgateway.url=http://localhost:8080 \
   -Dkafka.bootstrap=localhost:9092
 ```
 
 Проверяются пять обязательных сценариев 7.1, успешные Payments/Orders endpoints, единый формат ошибок, `REJECTED/failure_reason`, идемпотентность Kafka и конкурентный баланс.
 
-Allure results создаются в `autotests/target/allure-results`. При установленном Allure CLI:
+Allure results создаются в `target/allure-results`. Для генерации статического HTML-отчёта Maven самостоятельно скачает совместимый Allure CLI:
 
 ```bash
-allure serve autotests/target/allure-results
+mvn allure:report
 ```
+
+Готовый отчёт оказывается в `target/allure-report/index.html`. В основном репозитории OrbitaMarket его копия зафиксирована как `docs/allure-report/index.html`.

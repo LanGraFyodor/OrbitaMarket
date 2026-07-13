@@ -68,6 +68,10 @@ public class Order {
     failureReason = reason;
   }
 
+  boolean awaitsPaymentResult() {
+    return status == OrderStatus.CREATED || status == OrderStatus.PAYMENT_PENDING;
+  }
+
   UUID getId() {
     return id;
   }

@@ -42,4 +42,4 @@ cd frontend && npm run test:map
 docker compose down
 ```
 
-Allure CLI не входит в репозиторий. При наличии: `allure serve autotests/target/allure-results`.
+Готовый HTML-отчёт хранится в `docs/allure-report/`. Чтобы обновить его после нового E2E-прогона, выполните `mvn -f autotests/pom.xml -Pmain-repo-report allure:report`.

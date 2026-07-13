@@ -46,6 +46,22 @@
 | Security checks | Gitleaks, Semgrep | финальные JSON-отчёты и документированный TP/FP/risk triage |
 | Architecture/docs | C4-PlantUML, Markdown, SQL | C1/C2, поток оплаты, compliance и аналитика |
 
+## Структура репозитория
+
+| Путь | Содержимое и ответственность |
+|---|---|
+| `payments-service/` | Счёт пользователя, пополнение, баланс, атомарное и идемпотентное списание, outbox/inbox и Redis-кэш. |
+| `orders-service/` | Типы и жизненный цикл заказов, валидация payload, outbox оплаты, обработка Kafka-результата и Redis-кэш. |
+| `api-gateway/` | Единый вход, маршрутизация, JWT identity и Swagger UI. Бизнес-данные не хранит. |
+| `auth-service/` | Регистрация, BCrypt, JWT и профиль пользователя. |
+| `notifications-service/` | История уведомлений, Kafka consumer, read/read-all и SSE-колокольчик. |
+| `geo-pricing-service/` | Rust-сервис: GeoJSON/AOI, площадь, тариф, HTTP/gRPC, tiles и спутниковый PNG. |
+| `frontend/` | React-интерфейс: личный кабинет, кошелёк, заказы, карта AOI, продукт и уведомления. |
+| `contracts/` | Общие Java-контракты трёх Kafka-событий. |
+| `autotests/` | Независимые black-box E2E-тесты через Gateway и Kafka. |
+| `docs/` | C4, SQL-аналитика с результатом, поток оплаты, Allure, security triage и матрица выполнения ТЗ. |
+| `docker-compose.yml` | Полный локальный контур: сервисы, PostgreSQL, Redis и Kafka. |
+
 ## Быстрый запуск
 
 Требуются Docker Desktop и Docker Compose.
@@ -62,6 +78,19 @@ docker compose up --build -d
 - Swagger UI для всех Java REST API: http://localhost:8080/swagger-ui.html.
 
 В Swagger UI сервис выбирается в верхнем выпадающем списке. Для защищённых запросов кнопка **Authorize** принимает JWT (`bearerAuth`) либо учебный заголовок `X-User-Id`; кнопка **Try it out** отправляет запрос через API Gateway.
+
+Для ручной проверки через curl/Postman используйте фиксированный учебный UUID `00000000-0000-4000-8000-000000000042` в `X-User-Id`. Перед пополнением для него один раз создайте счёт через `POST /payments/api/v1/payments/accounts`; повторный вызов безопасен и не создаёт дубликат.
+
+### Проверка через Swagger UI
+
+Для проверки обязательных Payments/Orders API без регистрации используется учебный `X-User-Id`:
+
+1. Открыть http://localhost:8080/swagger-ui.html и выбрать сервис в верхнем списке.
+2. Нажать **Авторизация**.
+3. В нижнее поле `X-User-Id` вставить `00000000-0000-4000-8000-000000000042`, нажать нижнюю кнопку **Авторизовать**, затем **Закрыть**.
+4. Открыть endpoint, нажать **Try it out** и **Execute**. Для Payments порядок: создать счёт → пополнить → получить баланс.
+
+`bearerAuth` предназначен для пользовательского сценария: после `POST /auth/api/v1/auth/login` в поле вставляется выданный JWT. При валидном JWT Gateway использует `sub` токена и не доверяет присланному вручную `X-User-Id`.
 
 Первый запуск может занять несколько минут из-за загрузки Maven, npm и Cargo-зависимостей. Состояние:
 
@@ -150,7 +179,7 @@ docker compose down
 | `orders.payment-requests` | Orders → Payments | `OrderPaymentRequested` |
 | `payments.results` | Payments → Orders и Notifications | `OrderPaymentCompleted`, `OrderPaymentFailed` |
 
-Orders записывает заказ и outbox в одной транзакции. Publisher отправляет событие и после broker ACK переводит заказ в `PAYMENT_PENDING`. Payments атомарно выполняет условный SQL `balance >= amount`, фиксирует inbox, payment с уникальным `order_id` и outbox результата. Orders применяет результат через собственный inbox. Повторная доставка не создаёт второго финансового эффекта — effectively exactly-once списание поверх at-least-once доставки Kafka.
+Orders записывает заказ и outbox в одной транзакции. Publisher отправляет событие и после broker ACK переводит заказ в `PAYMENT_PENDING`. Payments атомарно выполняет условный SQL `balance >= amount`, фиксирует inbox, payment с уникальным `order_id` и outbox результата. Orders применяет результат через собственный inbox только при совпадении пользователя, суммы и ожидаемого статуса. Повторная доставка не создаёт второго финансового эффекта — effectively exactly-once списание поверх at-least-once доставки Kafka.
 
 Подробный поток: [docs/payment-flow.md](docs/payment-flow.md).
 
@@ -163,10 +192,11 @@ cd geo-pricing-service && cargo fmt --check && cargo clippy --all-targets -- -D 
 cd frontend && npm ci && npm run build
 docker compose up --build -d
 mvn -f autotests/pom.xml test
+mvn -f autotests/pom.xml -Pmain-repo-report allure:report
 cd frontend && npm run test:map
 ```
 
-`autotests` — независимый Maven-проект без зависимостей на внутренние классы сервисов. Для выполнения требования курса его каталог нужно опубликовать отдельным публичным Git-репозиторием. Allure CLI устанавливается отдельно; результаты тестов создаются в `autotests/target/allure-results`.
+`autotests` — независимый Maven-проект без зависимостей на внутренние классы сервисов. Исходные Allure results создаются в `autotests/target/allure-results`; статический отчёт текущего прогона хранится в `docs/allure-report/` и открывается локально через `index.html`.
 
 ## Документация
 
@@ -175,13 +205,15 @@ cd frontend && npm run test:map
 - [docs/checklist.md](docs/checklist.md) — приёмочные сценарии;
 - [docs/payment-flow.md](docs/payment-flow.md) — поток оплаты и гарантии;
 - [docs/c4-context.puml](docs/c4-context.puml), [docs/c4-containers.puml](docs/c4-containers.puml) — исходники C1/C2;
-- [docs/analytics.sql](docs/analytics.sql) — «кто и сколько купил»;
+- [docs/c4-context.pdf](docs/c4-context.pdf), [docs/c4-containers.pdf](docs/c4-containers.pdf) — готовые PDF C1/C2;
+- [docs/analytics.sql](docs/analytics.sql), [docs/analytics-result.md](docs/analytics-result.md) — SQL «кто и сколько купил» и зафиксированный результат выполнения;
+- [docs/allure-report/index.html](docs/allure-report/index.html) — готовый статический Allure-отчёт E2E;
 - [docs/security-triage.md](docs/security-triage.md) — security triage;
 - [docs/verification.md](docs/verification.md) — результаты последнего полного прогона;
 - [docs/final-audit.md](docs/final-audit.md) — честная построчная приёмка по требованиям LMS и оставшиеся внешние артефакты;
 - [docs/gitleaks-report.json](docs/gitleaks-report.json), [docs/semgrep-report.json](docs/semgrep-report.json) — реальные результаты финального инструментального сканирования.
 
-PDF C4, презентация и публикация `autotests` отдельным репозиторием оформляются отдельно от программного репозитория.
+В репозитории уже находятся PDF C4, SQL-result и статический Allure. Презентация/итоговый PDF-отчёт, если он требуется формой сдачи LMS, оформляется отдельно от исходного кода.
 
 ## Production-ограничения
 

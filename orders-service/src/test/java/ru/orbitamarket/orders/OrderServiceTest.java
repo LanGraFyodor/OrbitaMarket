@@ -10,7 +10,11 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import ru.orbitamarket.contracts.OrderPaymentCompleted;
+import ru.orbitamarket.contracts.OrderPaymentFailed;
 
 class OrderServiceTest {
 
@@ -57,5 +61,26 @@ class OrderServiceTest {
     assertThatThrownBy(() -> service.list(null))
         .isInstanceOf(OrderApiException.class)
         .hasMessage("X-User-Id is required");
+  }
+
+  @Test
+  void ignoresUncorrelatedAndTerminalPaymentResults() {
+    Order order = Order.accepted("u1", OrderType.ARCHIVE, "{}", 100);
+    when(inbox.register(any())).thenReturn(1);
+    when(orders.findById(order.getId())).thenReturn(Optional.of(order));
+
+    service.applyCompleted(
+        new OrderPaymentCompleted(UUID.randomUUID(), order.getId(), "other-user", 100, 900));
+    service.applyCompleted(
+        new OrderPaymentCompleted(UUID.randomUUID(), order.getId(), "u1", 99, 901));
+
+    assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
+
+    service.applyCompleted(
+        new OrderPaymentCompleted(UUID.randomUUID(), order.getId(), "u1", 100, 900));
+    service.applyFailed(
+        new OrderPaymentFailed(UUID.randomUUID(), order.getId(), "u1", "INSUFFICIENT_BALANCE"));
+
+    assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
   }
 }

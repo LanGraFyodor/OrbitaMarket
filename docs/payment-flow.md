@@ -17,7 +17,7 @@ Payments consumer transaction
   → INSERT outbox(OrderPaymentCompleted | OrderPaymentFailed)
 
 Payments outbox worker → Kafka payments.results
-  → Orders inbox(event_id) → PAID | PAYMENT_FAILED
+  → Orders inbox(event_id) → сверка user_id/amount/ожидаемого статуса → PAID | PAYMENT_FAILED
   → Notifications inbox/event uniqueness → SSE/история
 ```
 
@@ -33,4 +33,4 @@ CREATED → PAYMENT_PENDING → PAID
 CREATED → REJECTED (ошибка payload/type/price, failure_reason)
 ```
 
-Дубли результата оплаты игнорируются inbox Orders. Заказ другого пользователя возвращается как `ORDER_NOT_FOUND`, не раскрывая его существование.
+Дубли результата оплаты игнорируются inbox Orders. Перед переходом статуса Orders также сверяет пользователя, сумму и то, что заказ ещё ожидает результат; нерелевантное или запоздалое событие не меняет заказ. Заказ другого пользователя возвращается как `ORDER_NOT_FOUND`, не раскрывая его существование.

@@ -91,6 +91,9 @@ class OrderService {
       return;
     }
     Order order = orders.findById(result.orderId()).orElseThrow(OrderApiException::orderNotFound);
+    if (!matchesPaymentResult(order, result.userId(), result.amount())) {
+      return;
+    }
     order.markPaid();
   }
 
@@ -103,7 +106,18 @@ class OrderService {
       return;
     }
     Order order = orders.findById(result.orderId()).orElseThrow(OrderApiException::orderNotFound);
+    if (!matchesPaymentResult(order, result.userId())) {
+      return;
+    }
     order.markPaymentFailed(result.reason());
+  }
+
+  private boolean matchesPaymentResult(Order order, String userId) {
+    return order.awaitsPaymentResult() && order.getUserId().equals(userId);
+  }
+
+  private boolean matchesPaymentResult(Order order, String userId, long amount) {
+    return matchesPaymentResult(order, userId) && order.getPrice() == amount;
   }
 
   private OrderType parseProductType(String userId, CreateOrderRequest request) {
