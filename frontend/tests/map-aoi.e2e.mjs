@@ -129,6 +129,82 @@ try {
     );
   }
 
+  const authHeaders = {
+    Authorization: `Bearer ${session.access_token}`,
+  };
+  const account = await page.request.post(
+    `${baseUrl}/payments/api/v1/payments/accounts`,
+    { headers: authHeaders },
+  );
+  if (![200, 201].includes(account.status())) {
+    throw new Error(
+      `Account preparation failed: ${account.status()} ${await account.text()}`,
+    );
+  }
+  const topUp = await page.request.post(
+    `${baseUrl}/payments/api/v1/payments/accounts/top-up`,
+    {
+      headers: authHeaders,
+      data: { amount: 1_000_000 },
+    },
+  );
+  if (!topUp.ok()) {
+    throw new Error(`Top-up failed: ${topUp.status()} ${await topUp.text()}`);
+  }
+
+  await orderButton.click();
+  const paidOrder = page
+    .locator(".orders-table .table-row")
+    .filter({ hasText: "Оплачен" })
+    .first();
+  await paidOrder.waitFor({ state: "visible", timeout: 30_000 });
+  await paidOrder
+    .getByTitle("Открыть спутниковый продукт")
+    .click({ timeout: 30_000 });
+
+  const productImage = page.locator(
+    '.product-modal img[alt="Спутниковый продукт AOI"]',
+  );
+  await productImage.waitFor({ state: "visible", timeout: 45_000 });
+  await page.waitForFunction(() => {
+    const image = document.querySelector(
+      '.product-modal img[alt="Спутниковый продукт AOI"]',
+    );
+    return (
+      image instanceof HTMLImageElement &&
+      image.complete &&
+      image.naturalWidth > 0
+    );
+  });
+
+  const productState = await page.evaluate(async () => {
+    const localFrameKeys = Object.keys(localStorage).filter((key) =>
+      key.startsWith("orbitamarket-frame-v2-"),
+    );
+    const storedFrames = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("orbitamarket-products", 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction("frames", "readonly");
+        const count = transaction.objectStore("frames").count();
+        count.onerror = () => reject(count.error);
+        count.onsuccess = () => {
+          database.close();
+          resolve(count.result);
+        };
+      };
+    });
+    return { localFrameKeys, storedFrames };
+  });
+
+  if (productState.localFrameKeys.length > 0) {
+    throw new Error("Satellite image must not be persisted in localStorage");
+  }
+  if (productState.storedFrames < 1) {
+    throw new Error("Satellite image Blob was not persisted in IndexedDB");
+  }
+
   const tileState = await page
     .locator(".leaflet-tile-loaded")
     .evaluateAll((tiles) => ({
@@ -159,6 +235,8 @@ try {
       {
         result: "PASS",
         orderEnabledAfterQuote: true,
+        paidOrderOpened: true,
+        indexedDbFrames: productState.storedFrames,
         successfulTiles,
         tileState,
         visibleVertices,

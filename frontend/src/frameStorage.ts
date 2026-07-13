@@ -61,7 +61,8 @@ export const loadCapturedFrame = async (orderId: string) => {
 };
 
 export const hasCapturedFrame = async (orderId: string) =>
-  (await runTransaction<number>("readonly", (store) => store.count(orderId))) > 0;
+  (await runTransaction<number>("readonly", (store) => store.count(orderId))) >
+  0;
 
 export const saveCapturedFrame = async (
   orderId: string,

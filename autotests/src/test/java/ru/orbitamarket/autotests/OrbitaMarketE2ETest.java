@@ -147,6 +147,15 @@ class OrbitaMarketE2ETest {
                 .when().get(GATEWAY + "/orders/api/v1/orders/orders/" + UUID.randomUUID())
                 .then().statusCode(404)
                 .body("error_code", org.hamcrest.Matchers.equalTo("ORDER_NOT_FOUND"));
+
+        given().header("X-User-Id", user)
+                .when().get(GATEWAY + "/orders/api/v1/orders/orders/not-a-uuid")
+                .then().statusCode(400)
+                .body("error_code", org.hamcrest.Matchers.equalTo("INVALID_ORDER_ID"));
+
+        given().when().get(GATEWAY + "/notifications/api/v1/notifications")
+                .then().statusCode(400)
+                .body("error_code", org.hamcrest.Matchers.equalTo("MISSING_USER_ID"));
     }
 
     private static String newUser() {

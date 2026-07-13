@@ -2,6 +2,7 @@ package ru.orbitamarket.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,8 +10,10 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -177,12 +180,14 @@ class AuthController {
   }
 
   @GetMapping("/profile")
+  @SecurityRequirement(name = "bearerAuth")
   ProfileResponse profile(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
     return authService.profile(authorization);
   }
 
   @PutMapping("/profile")
+  @SecurityRequirement(name = "bearerAuth")
   ProfileResponse update(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @Valid @RequestBody UpdateProfileRequest request) {
@@ -223,6 +228,18 @@ class AuthExceptionHandler {
         .body(
             new AuthError(
                 "INVALID_REQUEST", "Check required fields and password length", Instant.now()));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<AuthError> malformedJson() {
+    return ResponseEntity.badRequest()
+        .body(new AuthError("INVALID_REQUEST", "Malformed JSON request", Instant.now()));
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  ResponseEntity<AuthError> duplicateEmail() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new AuthError("EMAIL_ALREADY_EXISTS", "Email already registered", Instant.now()));
   }
 
   @ExceptionHandler(Exception.class)

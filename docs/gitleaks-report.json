@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 20,
+  "EndLine": 20,
+  "StartColumn": 32,
+  "EndColumn": 95,
+  "Match": "SECRET = \"REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "/repo/auth-service/src/test/java/ru/orbitamarket/auth/AuthServiceTest.java",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 3.9237146,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/repo/auth-service/src/test/java/ru/orbitamarket/auth/AuthServiceTest.java:generic-api-key:20"
+ }
+]

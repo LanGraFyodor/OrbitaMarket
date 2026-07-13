@@ -15,10 +15,14 @@
 | Redis smoke | ключи `account-balance` и `orders-by-user` созданы; write invalidation проверена |
 | API smoke | счёт 1000 → заказ 120 → баланс 880 |
 | `OrbitaMarketE2ETest` | 7 tests, 0 failures/errors |
-| browser map E2E | 25 successful tiles, 15 visible images, 5 AOI SVG paths, quote unlocked order |
+| browser product E2E | 15 successful/visible tiles, 5 AOI SVG paths, quote unlocked order, `PAID` product opened, 1 Blob in IndexedDB |
+| Swagger/OpenAPI | единый UI и 4 service documents возвращают HTTP 200 |
+| API negative paths | неверный `order_id` и отсутствие identity в Notifications возвращают JSON 400, а не 500 |
+| Gitleaks | 291.56 MB scanned, 1 FP test key, 0 confirmed leaks |
+| Semgrep | 145 rules, 78 targets, 1 INFO FP/accepted build risk, 0 errors |
 | dynamic Rust pricing | 0.52 км² TASKING: 305 GC (0.3 м), 115 GC (0.8 м), 32 GC (3 м) |
 | imagery fulfillment | спутниковый JPEG сформирован через Rust, 275648 bytes |
 
-Во время первого E2E после Redis был найден и исправлен null cache key: запрос без `X-User-Id` снова возвращает `400 MISSING_USER_ID`, а не 500. Во время browser E2E найден и исправлен stale Docker DNS nginx после пересоздания Gateway.
+Во время итогового аудита исправлены два необработанных client error: неверный UUID Orders и отсутствующий `X-User-Id` Notifications ранее давали 500. Browser E2E расширен до фактической оплаты и открытия снимка; отдельно подтверждено, что изображение хранится Blob в IndexedDB и не расходует quota `localStorage`.
 
-Gitleaks/Semgrep CLI в текущей среде не установлены; в `docs/` лежат сохранённые JSON предыдущего чистого прогона. Перед защитой их следует повторить на финальном commit командами из `docs/security-triage.md`.
+Полные JSON-результаты сохранены в `docs/gitleaks-report.json` и `docs/semgrep-report.json`; исходные findings не скрывались и разобраны в security triage.

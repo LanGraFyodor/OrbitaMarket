@@ -1475,7 +1475,11 @@ footer > div:last-child {
   .hero:before {
     background:
       linear-gradient(180deg, rgba(11, 15, 17, 0.12), #0b0f11 72%),
-      url("/assets/earth-night.jpg") 60% top/cover;
+      radial-gradient(
+        circle at 75% 25%,
+        rgba(110, 255, 218, 0.16),
+        transparent 34%
+      );
   }
   .hero-copy {
     left: 25px;

@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 class OrderApiExceptionHandler {
@@ -20,6 +21,12 @@ class OrderApiExceptionHandler {
   ResponseEntity<OrderApiError> malformedJson() {
     return ResponseEntity.badRequest()
         .body(new OrderApiError("INVALID_PAYLOAD", "Malformed JSON request", Instant.now()));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<OrderApiError> invalidPathParameter() {
+    return ResponseEntity.badRequest()
+        .body(new OrderApiError("INVALID_ORDER_ID", "order_id must be a UUID", Instant.now()));
   }
 
   @ExceptionHandler(Exception.class)

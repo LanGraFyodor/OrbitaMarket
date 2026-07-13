@@ -4,8 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 record NotificationResponse(
@@ -36,6 +38,9 @@ record NotificationResponse(
         value.createdAt());
   }
 }
+
+record NotificationError(
+    @JsonProperty("error_code") String errorCode, String message, Instant timestamp) {}
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -78,7 +83,24 @@ class NotificationController {
 @RestControllerAdvice
 class NotificationErrors {
   @ExceptionHandler(IllegalArgumentException.class)
-  void invalid(IllegalArgumentException exception) {
-    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+  ResponseEntity<NotificationError> invalid(IllegalArgumentException exception) {
+    return ResponseEntity.badRequest()
+        .body(new NotificationError("MISSING_USER_ID", exception.getMessage(), Instant.now()));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<NotificationError> invalidId() {
+    return ResponseEntity.badRequest()
+        .body(
+            new NotificationError(
+                "INVALID_NOTIFICATION_ID", "Notification id must be a UUID", Instant.now()));
+  }
+
+  @ExceptionHandler(NoSuchElementException.class)
+  ResponseEntity<NotificationError> notFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(
+            new NotificationError(
+                "NOTIFICATION_NOT_FOUND", "Notification was not found", Instant.now()));
   }
 }

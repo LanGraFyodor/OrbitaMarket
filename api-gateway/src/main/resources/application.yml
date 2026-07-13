@@ -26,6 +26,17 @@ spring:
           filters: [ StripPrefix=1 ]
 management: { endpoints: { web: { exposure: { include: health,info } } } }
 auth.jwt.secret: ${JWT_SECRET:orbitamarket-development-secret-key-change-in-production}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    operations-sorter: method
+    tags-sorter: alpha
+    urls:
+      - { name: "01 · Payments Service", url: /payments/v3/api-docs }
+      - { name: "02 · Orders Service", url: /orders/v3/api-docs }
+      - { name: "03 · Auth Service", url: /auth/v3/api-docs }
+      - { name: "04 · Notifications Service", url: /notifications/v3/api-docs }
 ---
 spring:
   config: { activate: { on-profile: docker } }

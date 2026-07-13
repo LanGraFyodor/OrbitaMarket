@@ -6,7 +6,7 @@
 
 - **Payments Service (Java):** один счёт на пользователя, пополнение, баланс, конкурентно-безопасное и идемпотентное списание.
 - **Orders Service (Java):** `ARCHIVE`, `TASKING`, `MONITORING`, валидация payload, жизненный цикл `CREATED → PAYMENT_PENDING → PAID/PAYMENT_FAILED`, `REJECTED` и `failure_reason`.
-- **API Gateway (Java):** единая точка входа, маршрутизация и передача `X-User-Id`; при JWT заголовок формируется из `sub` токена.
+- **API Gateway (Java):** единая точка входа, маршрутизация и передача `X-User-Id`; при JWT заголовок формируется из `sub` токена; единый Swagger UI агрегирует OpenAPI всех Java-сервисов.
 - **Auth Service (Java):** регистрация, вход, BCrypt, JWT HS384 и редактирование профиля.
 - **Notifications Service (Java):** идемпотентные уведомления об оплате, история, read/read-all и SSE для колокольчика.
 - **Geo Pricing Service (Rust):** проверка GeoJSON, самопересечений и площади, тариф, bbox, HTTP/gRPC и получение спутникового PNG.
@@ -22,6 +22,7 @@
 | Язык backend | Java 21 | Payments, Orders, Gateway, Auth, Notifications и Kafka contracts |
 | Java framework | Spring Boot 3.4.5 | конфигурация, DI, REST, lifecycle и production packaging |
 | HTTP/API | Spring Web, Jakarta Validation, Jackson | REST endpoints, DTO/JSON и единый формат ошибок |
+| API documentation | Springdoc OpenAPI 2.8.8, Swagger UI | интерактивная документация четырёх Java REST API через Gateway |
 | Persistence | Spring Data JPA, Hibernate, PostgreSQL JDBC | агрегаты сервисов и транзакции |
 | Messaging | Spring Kafka, Apache Kafka 3.9 | асинхронная saga оплаты, outbox/inbox |
 | Gateway | Spring Cloud Gateway 2024.0.1, Reactor | reactive routing, StripPrefix и identity filter |
@@ -42,7 +43,7 @@
 | Test reports | Allure adapter | результаты системного прогона |
 | Browser tests | Playwright Core + Microsoft Edge | реальные tiles, AOI и доступность заказа |
 | Quality | Spotless/Google Java Format, Prettier, Cargo fmt, Clippy | читаемость и статические проверки |
-| Security checks | Gitleaks, Semgrep | поиск секретов/SAST и документированный triage |
+| Security checks | Gitleaks, Semgrep | финальные JSON-отчёты и документированный TP/FP/risk triage |
 | Architecture/docs | C4-PlantUML, Markdown, SQL | C1/C2, поток оплаты, compliance и аналитика |
 
 ## Быстрый запуск
@@ -58,6 +59,9 @@ docker compose up --build -d
 - PostgreSQL для локальной диагностики: `localhost:5433`;
 - Kafka для системных тестов: `localhost:9092`.
 - Redis для диагностики: `localhost:6379`.
+- Swagger UI для всех Java REST API: http://localhost:8080/swagger-ui.html.
+
+В Swagger UI сервис выбирается в верхнем выпадающем списке. Для защищённых запросов кнопка **Authorize** принимает JWT (`bearerAuth`) либо учебный заголовок `X-User-Id`; кнопка **Try it out** отправляет запрос через API Gateway.
 
 Первый запуск может занять несколько минут из-за загрузки Maven, npm и Cargo-зависимостей. Состояние:
 
@@ -167,7 +171,6 @@ cd frontend && npm run test:map
 ## Документация
 
 - [PROJECT.md](PROJECT.md) — цель, стейкхолдеры и roadmap;
-- [README2.md](README2.md) — подробное объяснение структуры и всех сквозных процессов;
 - [docs/requirements-compliance.md](docs/requirements-compliance.md) — выполнение требований итогового проекта и дополнительные инженерные возможности;
 - [docs/checklist.md](docs/checklist.md) — приёмочные сценарии;
 - [docs/payment-flow.md](docs/payment-flow.md) — поток оплаты и гарантии;
@@ -175,10 +178,11 @@ cd frontend && npm run test:map
 - [docs/analytics.sql](docs/analytics.sql) — «кто и сколько купил»;
 - [docs/security-triage.md](docs/security-triage.md) — security triage;
 - [docs/verification.md](docs/verification.md) — результаты последнего полного прогона;
-- `docs/gitleaks-report.json`, `docs/semgrep-report.json` — результаты последнего сохранённого сканирования.
+- [docs/final-audit.md](docs/final-audit.md) — честная построчная приёмка по требованиям LMS и оставшиеся внешние артефакты;
+- [docs/gitleaks-report.json](docs/gitleaks-report.json), [docs/semgrep-report.json](docs/semgrep-report.json) — реальные результаты финального инструментального сканирования.
 
 PDF C4, презентация и публикация `autotests` отдельным репозиторием оформляются отдельно от программного репозитория.
 
 ## Production-ограничения
 
-Это учебный MVP. Перед production необходимы: собственный `JWT_SECRET`, TLS, secrets manager, review/backup-процесс для Liquibase, отдельные роли/БД, Kafka ACL/TLS, rate limiting, object storage вместо `localStorage`, постоянный fulfillment worker и лицензированный imagery provider с подходящими условиями хранения/распространения.
+Это учебный MVP. Перед production необходимы: собственный `JWT_SECRET`, TLS, secrets manager, review/backup-процесс для Liquibase, отдельные роли/БД, Kafka ACL/TLS, rate limiting, private object storage вместо браузерного IndexedDB, постоянный fulfillment worker и лицензированный imagery provider с подходящими условиями хранения/распространения.
